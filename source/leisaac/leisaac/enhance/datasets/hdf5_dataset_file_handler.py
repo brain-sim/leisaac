@@ -1,6 +1,7 @@
 import enum
 import copy
 import h5py
+import torch
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -36,6 +37,7 @@ class StreamingHDF5DatasetFileHandler(HDF5DatasetFileHandler):
             return funture.result() if write_mode == StreamWriteMode.LAST else funture
 
         def _do_write_episode(self, h5_episode_group: h5py.Group, episode: EpisodeData):
+            episode.pre_export()
             def create_dataset_helper(group, key, value):
                 """Helper method to create dataset that contains recursive dict objects."""
                 if isinstance(value, dict):
@@ -46,6 +48,12 @@ class StreamingHDF5DatasetFileHandler(HDF5DatasetFileHandler):
                     for sub_key, sub_value in value.items():
                         create_dataset_helper(key_group, sub_key, sub_value)
                 else:
+                    if isinstance(value, list):
+                        if len(value) == 0:
+                            return
+                        if not isinstance(value[0], torch.Tensor):
+                            raise ValueError("Unsupported list element type for dataset export")
+                        value = torch.stack(value)
                     data = value.cpu().numpy()
                     if key not in group:
                         dataset = group.create_dataset(

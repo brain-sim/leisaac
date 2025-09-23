@@ -4,7 +4,7 @@ import grpc
 import time
 import numpy as np
 
-from .base import ZMQServicePolicy, Policy
+from .base import ZMQServicePolicy, Policy, MsgPackSerializer
 from .lerobot.transport import services_pb2_grpc, services_pb2
 from .lerobot.transport.utils import grpc_channel_options, send_bytes_in_chunks
 from .lerobot.helpers import RemotePolicyConfig, TimedObservation
@@ -35,7 +35,13 @@ class Gr00tServicePolicyClient(ZMQServicePolicy):
             timeout_ms: Timeout of the policy server.
             modality_keys: Keys of the modality.
         """
-        super().__init__(host=host, port=port, timeout_ms=timeout_ms, ping_endpoint="ping")
+        super().__init__(
+            host=host,
+            port=port,
+            timeout_ms=timeout_ms,
+            ping_endpoint="ping",
+            serializer=MsgPackSerializer,
+        )
         self.camera_keys = camera_keys
         self.modality_keys = modality_keys
 

@@ -1,8 +1,12 @@
-import torch
+import json
 import warnings
 
 from abc import ABC, abstractmethod
 from io import BytesIO
+
+import msgpack
+import numpy as np
+import torch
 
 try:
     import zmq
@@ -46,8 +50,41 @@ class TorchSerializer:
         return obj
 
 
+class MsgPackSerializer:
+    @staticmethod
+    def to_bytes(data: dict) -> bytes:
+        return msgpack.packb(data, default=MsgPackSerializer._encode_custom)
+
+    @staticmethod
+    def from_bytes(data: bytes) -> dict:
+        return msgpack.unpackb(data, object_hook=MsgPackSerializer._decode_custom)
+
+    @staticmethod
+    def _encode_custom(obj):
+        if isinstance(obj, np.ndarray):
+            buffer = BytesIO()
+            np.save(buffer, obj, allow_pickle=False)
+            return {"__ndarray_class__": True, "as_npy": buffer.getvalue()}
+        return obj
+
+    @staticmethod
+    def _decode_custom(obj):
+        if "__ndarray_class__" in obj:
+            return np.load(BytesIO(obj["as_npy"]), allow_pickle=False)
+        if "__ModalityConfig_class__" in obj:
+            return json.loads(obj["as_json"])
+        return obj
+
+
 class ZMQServicePolicy(Policy):
-    def __init__(self, host: str, port: int, timeout_ms: int = 5000, ping_endpoint: str = "ping"):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        timeout_ms: int = 5000,
+        ping_endpoint: str = "ping",
+        serializer=TorchSerializer,
+    ):
         super().__init__("service")
         self.host = host
         self.port = port
@@ -55,6 +92,7 @@ class ZMQServicePolicy(Policy):
         self.context = zmq.Context()
         self._init_socket()
         self._ping_endpoint = ping_endpoint
+        self._serializer = serializer
         self.check_service_status()
 
     def _init_socket(self):
@@ -93,11 +131,11 @@ class ZMQServicePolicy(Policy):
         if requires_input:
             request["data"] = data
 
-        self.socket.send(TorchSerializer.to_bytes(request))
+        self.socket.send(self._serializer.to_bytes(request))
         message = self.socket.recv()
         if message == b"ERROR":
             raise RuntimeError("Server error")
-        return TorchSerializer.from_bytes(message)
+        return self._serializer.from_bytes(message)
 
     def __del__(self):
         """Cleanup resources on destruction"""
