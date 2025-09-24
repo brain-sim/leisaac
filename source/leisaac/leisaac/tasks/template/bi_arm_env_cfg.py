@@ -65,24 +65,29 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
     )
 
     top: TiledCameraCfg = TiledCameraCfg(
-        prim_path="{ENV_REGEX_NS}/Right_Robot/base/top_camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.225, -0.5, 0.6), rot=(0.1650476, -0.9862856, 0.0, 0.0), convention="ros"),  # wxyz
+        prim_path="{ENV_REGEX_NS}/Left_Robot/base/top_camera",
+        offset=TiledCameraCfg.OffsetCfg(
+            pos=(-0.2, 0.1, 0.5),
+            rot=(0.0166924,  0.0402991, -0.3823192, -0.9230002), # wxyz
+            convention="opengl",
+        ),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=28.7,
+            focal_length=24.0,
             focus_distance=400.0,
-            horizontal_aperture=38.11,  # For a 78° FOV (assuming square image)
+            horizontal_aperture=38.11,
             clipping_range=(0.01, 50.0),
-            lock_camera=True
+            lock_camera=True,
         ),
         width=640,
         height=480,
-        update_period=1 / 30.0,  # 30FPS
+        update_period=1 / 30.0,
     )
+    # modified according to xlerobot configuration
 
     light = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Light",
-        spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+        spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
     )
 
 

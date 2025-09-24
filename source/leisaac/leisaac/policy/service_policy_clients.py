@@ -48,11 +48,85 @@ class Gr00tServicePolicyClient(ZMQServicePolicy):
     def get_action(self, observation_dict: dict) -> torch.Tensor:
         obs_dict = {f"video.{key}": observation_dict[key].cpu().numpy().astype(np.uint8) for key in self.camera_keys}
 
-        if "single_arm" in self.modality_keys:
-            joint_pos = convert_leisaac_action_to_lerobot(observation_dict["joint_pos"])
-            obs_dict["state.single_arm"] = joint_pos[:, 0:5].astype(np.float64)
-            obs_dict["state.gripper"] = joint_pos[:, 5:6].astype(np.float64)
-        # TODO: add bi-arm support
+        def _ensure_2d(arr: np.ndarray) -> np.ndarray:
+            if arr.ndim == 1:
+                return arr[:, None]
+            return arr
+
+        def _ensure_batch_dim(tensor: torch.Tensor | np.ndarray) -> torch.Tensor | np.ndarray:
+            if tensor.ndim == 1:
+                if isinstance(tensor, torch.Tensor):
+                    return tensor.unsqueeze(0)
+                return tensor[None, :]
+            return tensor
+
+        single_arm_width = len(SINGLE_ARM_JOINT_NAMES)
+        modality_set = set(self.modality_keys)
+
+        expects_single_arm = {"single_arm", "gripper"}.issubset(modality_set)
+        expects_bi_arm = {
+            "left_arm",
+            "left_gripper",
+            "right_arm",
+            "right_gripper",
+        }.issubset(modality_set)
+
+        single_arm_joint = None
+        left_joint = None
+        right_joint = None
+
+        if expects_single_arm:
+            if "joint_pos" in observation_dict:
+                raw_single = _ensure_batch_dim(observation_dict["joint_pos"])[:, :single_arm_width]
+                single_arm_joint = convert_leisaac_action_to_lerobot(raw_single)
+            elif "left_joint_pos" in observation_dict:
+                raw_single = _ensure_batch_dim(observation_dict["left_joint_pos"])
+                single_arm_joint = convert_leisaac_action_to_lerobot(raw_single)
+            else:
+                raise KeyError(
+                    "Single-arm modality keys require 'joint_pos' or 'left_joint_pos' in observation_dict."
+                )
+
+        if expects_bi_arm:
+            if "left_joint_pos" in observation_dict and "right_joint_pos" in observation_dict:
+                left_joint = convert_leisaac_action_to_lerobot(
+                    _ensure_batch_dim(observation_dict["left_joint_pos"])
+                )
+                right_joint = convert_leisaac_action_to_lerobot(
+                    _ensure_batch_dim(observation_dict["right_joint_pos"])
+                )
+            elif "joint_pos" in observation_dict:
+                joint_pos = _ensure_batch_dim(observation_dict["joint_pos"])
+                if joint_pos.shape[1] < single_arm_width * 2:
+                    raise ValueError(
+                        "Expected joint_pos to contain both arms when bi-arm modality keys are provided."
+                    )
+                left_joint = convert_leisaac_action_to_lerobot(joint_pos[:, :single_arm_width])
+                right_joint = convert_leisaac_action_to_lerobot(
+                    joint_pos[:, single_arm_width: single_arm_width * 2]
+                )
+            else:
+                raise KeyError(
+                    "Bi-arm modality keys require 'left_joint_pos'/'right_joint_pos' or 'joint_pos' in observation_dict."
+                )
+
+            if single_arm_joint is None:
+                single_arm_joint = left_joint
+
+        if "single_arm" in modality_set and single_arm_joint is not None:
+            obs_dict["state.single_arm"] = single_arm_joint[:, 0:5].astype(np.float64)
+        if "gripper" in modality_set and single_arm_joint is not None:
+            obs_dict["state.gripper"] = single_arm_joint[:, 5:6].astype(np.float64)
+
+        if "left_arm" in modality_set and left_joint is not None:
+            obs_dict["state.left_arm"] = left_joint[:, 0:5].astype(np.float64)
+        if "left_gripper" in modality_set and left_joint is not None:
+            obs_dict["state.left_gripper"] = left_joint[:, 5:6].astype(np.float64)
+
+        if "right_arm" in modality_set and right_joint is not None:
+            obs_dict["state.right_arm"] = right_joint[:, 0:5].astype(np.float64)
+        if "right_gripper" in modality_set and right_joint is not None:
+            obs_dict["state.right_gripper"] = right_joint[:, 5:6].astype(np.float64)
 
         obs_dict["annotation.human.task_description"] = [observation_dict["task_description"]]
 
@@ -77,11 +151,38 @@ class Gr00tServicePolicyClient(ZMQServicePolicy):
                 "action.gripper": np.zeros((1, 1)),
             }
         """
-        concat_action = np.concatenate(
-            [action_chunk["action.single_arm"], action_chunk["action.gripper"][:, None]],
-            axis=1,
-        )
-        concat_action = convert_lerobot_action_to_leisaac(concat_action)
+
+        if "action.single_arm" in action_chunk:
+            single_action = np.atleast_2d(action_chunk["action.single_arm"])
+            gripper_action = action_chunk.get("action.gripper")
+            if gripper_action is not None:
+                gripper_action = _ensure_2d(np.asarray(gripper_action))
+                concat_action = np.concatenate([single_action, gripper_action], axis=1)
+            else:
+                concat_action = single_action
+            concat_action = convert_lerobot_action_to_leisaac(concat_action)
+        else:
+            required_keys = [
+                "action.left_arm",
+                "action.left_gripper",
+                "action.right_arm",
+                "action.right_gripper",
+            ]
+            missing_keys = [key for key in required_keys if key not in action_chunk]
+            if missing_keys:
+                raise KeyError(f"Missing action keys from policy server response: {missing_keys}")
+
+            left_action = np.atleast_2d(action_chunk["action.left_arm"])
+            left_gripper = _ensure_2d(np.asarray(action_chunk["action.left_gripper"]))
+            right_action = np.atleast_2d(action_chunk["action.right_arm"])
+            right_gripper = _ensure_2d(np.asarray(action_chunk["action.right_gripper"]))
+
+            left_concat = np.concatenate([left_action, left_gripper], axis=1)
+            right_concat = np.concatenate([right_action, right_gripper], axis=1)
+
+            left_concat = convert_lerobot_action_to_leisaac(left_concat)
+            right_concat = convert_lerobot_action_to_leisaac(right_concat)
+            concat_action = np.concatenate([left_concat, right_concat], axis=1)
 
         return torch.from_numpy(concat_action[:, None, :])
 

@@ -422,12 +422,16 @@ def convert_dataset(args: argparse.Namespace) -> None:
                 if "success" in demo_group.attrs and not bool(demo_group.attrs["success"]):
                     continue
 
-                actions, state, videos = _extract_episode(
-                    robot_type=args.robot_type,
-                    demo_group=demo_group,
-                    skip_frames=args.skip_frames,
-                    preprocess=not args.disable_preprocessing,
-                )
+                try:
+                    actions, state, videos = _extract_episode(
+                        robot_type=args.robot_type,
+                        demo_group=demo_group,
+                        skip_frames=args.skip_frames,
+                        preprocess=not args.disable_preprocessing,
+                    )
+                except KeyError as exc:
+                    iter_bar.write(f"Skipping {demo_name}: {exc}")
+                    continue
 
                 if actions.size == 0:
                     continue

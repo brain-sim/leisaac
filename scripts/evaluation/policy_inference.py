@@ -141,14 +141,15 @@ def main():
 
         if task_type == "so101leader":
             modality_keys = ["single_arm", "gripper"]
+        elif task_type == "bi-so101leader":
+            modality_keys = ["left_arm", "left_gripper", "right_arm", "right_gripper"]
         else:
             raise ValueError(f"Task type {task_type} not supported when using GR00T N1.5 policy yet.")
-
         policy = Gr00tServicePolicyClient(
             host=args_cli.policy_host,
             port=args_cli.policy_port,
             timeout_ms=args_cli.policy_timeout_ms,
-            camera_keys=[key for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)],
+            camera_keys=[key.split("_")[0] for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)],
             modality_keys=modality_keys,
         )
     elif "lerobot" in args_cli.policy_type:
@@ -192,7 +193,6 @@ def main():
                     obs_dict, _ = env.reset()
                     episode_count += 1
                     break
-
                 obs_dict = preprocess_obs_dict(obs_dict['policy'], model_type, args_cli.policy_language_instruction)
                 actions = policy.get_action(obs_dict).to(env.device)
                 for i in range(args_cli.policy_action_horizon):
