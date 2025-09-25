@@ -104,10 +104,10 @@ class FridgeStockingEnvCfg(BiArmTaskEnvCfg):
         self.viewer.lookat = (0.9, 0.0, -0.3)
 
         # Position the arms close to the table for the handoff task
-        self.scene.left_arm.init_state.pos = (4.5, -3.2, 0.75)
+        self.scene.left_arm.init_state.pos = (4.5, -3.2, 0.73)
         self.scene.left_arm.init_state.rot = (0.38268, 0.0, 0.0, -0.92388)
 
-        self.scene.right_arm.init_state.pos = (4.688, -3.012, 0.75)
+        self.scene.right_arm.init_state.pos = (4.688, -3.012, 0.73)
         self.scene.right_arm.init_state.rot = (0.38268, 0.0, 0.0, -0.92388)
 
         parse_usd_and_create_subassets(TEST_WITH_CUBE_USD_PATH, self)
