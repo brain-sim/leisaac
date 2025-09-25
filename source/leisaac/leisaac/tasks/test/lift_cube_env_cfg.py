@@ -1,3 +1,4 @@
+import math
 import torch
 
 from typing import Dict, List
@@ -104,6 +105,8 @@ class LiftCubeEnvCfg(SingleArmTaskEnvCfg):
         self.viewer.lookat = (0.9, 0.0, -0.3)
 
         self.scene.robot.init_state.pos = (0.35, -0.64, 0.01)
+        half_yaw = math.radians(130.0) * 0.5
+        self.scene.robot.init_state.rot = (math.cos(half_yaw), 0.0, 0.0, math.sin(half_yaw))  # wxyz yaw-only rotation
 
         parse_usd_and_create_subassets(TEST_WITH_CUBE_USD_PATH, self)
 
