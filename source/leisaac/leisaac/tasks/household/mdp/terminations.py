@@ -6,6 +6,8 @@ from isaaclab.assets import RigidObject, Articulation
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.envs import ManagerBasedRLEnv
 
+from .observations import fridge_door_closed, object_placed
+
 
 def cube_height_above_base(env: ManagerBasedRLEnv, cube_cfg: SceneEntityCfg, robot_cfg: SceneEntityCfg, robot_base_name: str = "base", height_threshold: float = 0.20) -> torch.Tensor:
     """Determine if the cube is above the robot base.
@@ -32,3 +34,39 @@ def cube_height_above_base(env: ManagerBasedRLEnv, cube_cfg: SceneEntityCfg, rob
     done = torch.logical_and(done, above_base)
 
     return done
+
+
+def fridge_stocking_completed(
+        env: ManagerBasedRLEnv,
+        object_cfg: SceneEntityCfg,
+        target_cfg: SceneEntityCfg | None = None,
+        fridge_cfg: SceneEntityCfg = SceneEntityCfg("fridge"),
+        robot_cfg: SceneEntityCfg | None = None,
+        ee_frame_cfg: SceneEntityCfg | None = None,
+        target_position: tuple[float, float, float] | None = None,
+        close_threshold: float = 0.1,
+        xy_threshold: float = 0.15,
+        z_threshold: float = 0.05) -> torch.Tensor:
+    """Evaluate success for the fridge stocking task.
+
+    The task succeeds when the object is placed near the target location and the fridge door
+    is closed again.
+    """
+
+    placed = object_placed(
+        env,
+        object_cfg=object_cfg,
+        target_cfg=target_cfg,
+        target_position=target_position,
+        robot_cfg=robot_cfg,
+        ee_frame_cfg=ee_frame_cfg,
+        xy_threshold=xy_threshold,
+        z_threshold=z_threshold,
+    )
+    closed = fridge_door_closed(
+        env,
+        fridge_cfg=fridge_cfg,
+        angle_threshold=close_threshold,
+    )
+
+    return torch.logical_and(placed, closed)

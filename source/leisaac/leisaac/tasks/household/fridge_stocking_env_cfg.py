@@ -1,14 +1,12 @@
 import torch
 
-from typing import Dict, List
-
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
+from isaaclab.envs.mimic_env_cfg import MimicEnvCfg, SubTaskConfig
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
-from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
 from leisaac.assets.scenes.test import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
@@ -17,31 +15,18 @@ from leisaac.utils.domain_randomization import randomize_object_uniform, randomi
 from leisaac.utils.env_utils import delete_attribute
 
 from . import mdp
-from ..template import SingleArmTaskSceneCfg, SingleArmTaskEnvCfg, SingleArmTerminationsCfg, SingleArmObservationsCfg
+from ..template import BiArmTaskEnvCfg, BiArmTaskSceneCfg, BiArmTerminationsCfg, BiArmObservationsCfg
 
 from brain_sim_assets.props.kitchen.scene_sets.fridge_stocking import bsFridgeStockingEntitiesGenerator
 
 
+STORAGE_PLATE_TARGET_POSITION = (1.75, -1.7, 0.95)
+
+
 @configclass
-class FridgeStockingSceneCfg(SingleArmTaskSceneCfg):
+class FridgeStockingSceneCfg(BiArmTaskSceneCfg):
 
     scene: AssetBaseCfg = TEST_WITH_CUBE_CFG.replace(prim_path="{ENV_REGEX_NS}/Scene")
-
-    front: TiledCameraCfg = TiledCameraCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base/front_camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(-0.6, -0.75, 0.38), rot=(0.77337, 0.55078, -0.2374, -0.20537), convention="opengl"),
-        data_types=["rgb"],
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=40.6,
-            focus_distance=400.0,
-            horizontal_aperture=38.11,
-            clipping_range=(0.01, 50.0),
-            lock_camera=True,
-        ),
-        width=640,
-        height=480,
-        update_period=1 / 30.0,
-    )
 
     light = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Light",
@@ -58,18 +43,26 @@ class FridgeStockingSceneCfg(SingleArmTaskSceneCfg):
 
     def __post_init__(self):
         super().__post_init__()
-        delete_attribute(self, "wrist")
+        delete_attribute(self, "front")
 
 
 @configclass
-class FridgeStockingObservationsCfg(SingleArmObservationsCfg):
+class FridgeStockingObservationsCfg(BiArmObservationsCfg):
 
     @configclass
     class SubtaskCfg(ObsGroup):
-        pick_cube = ObsTerm(func=mdp.object_grasped, params={
-            "robot_cfg": SceneEntityCfg("robot"),
-            "ee_frame_cfg": SceneEntityCfg("ee_frame"),
+        open_fridge = ObsTerm(func=mdp.fridge_door_opened, params={
+            "fridge_cfg": SceneEntityCfg("fridge"),
+        })
+        place_object = ObsTerm(func=mdp.object_placed, params={
             "object_cfg": SceneEntityCfg("cube"),
+            "target_cfg": SceneEntityCfg("storage_plate"),
+            "target_position": STORAGE_PLATE_TARGET_POSITION,
+            "xy_threshold": 0.18,
+            "z_threshold": 0.06,
+        })
+        close_fridge = ObsTerm(func=mdp.fridge_door_closed, params={
+            "fridge_cfg": SceneEntityCfg("fridge"),
         })
 
         def __post_init__(self):
@@ -84,18 +77,21 @@ class FridgeStockingObservationsCfg(SingleArmObservationsCfg):
 
 
 @configclass
-class FridgeStockingTerminationsCfg(SingleArmTerminationsCfg):
+class FridgeStockingTerminationsCfg(BiArmTerminationsCfg):
 
-    success = DoneTerm(func=mdp.cube_height_above_base, params={
-        "cube_cfg": SceneEntityCfg("cube"),
-        "robot_cfg": SceneEntityCfg("robot"),
-        "robot_base_name": "base",
-        "height_threshold": 0.20,
+    success = DoneTerm(func=mdp.fridge_stocking_completed, params={
+        "object_cfg": SceneEntityCfg("cube"),
+        "target_cfg": SceneEntityCfg("storage_plate"),
+        "fridge_cfg": SceneEntityCfg("fridge"),
+        "target_position": STORAGE_PLATE_TARGET_POSITION,
+        "close_threshold": 0.1,
+        "xy_threshold": 0.18,
+        "z_threshold": 0.06,
     })
 
 
 @configclass
-class FridgeStockingEnvCfg(SingleArmTaskEnvCfg):
+class FridgeStockingEnvCfg(BiArmTaskEnvCfg):
 
     scene: FridgeStockingSceneCfg = FridgeStockingSceneCfg(env_spacing=8.0)
     observations: FridgeStockingObservationsCfg = FridgeStockingObservationsCfg()
@@ -107,7 +103,12 @@ class FridgeStockingEnvCfg(SingleArmTaskEnvCfg):
         self.viewer.eye = (-0.4, -0.6, 0.5)
         self.viewer.lookat = (0.9, 0.0, -0.3)
 
-        self.scene.robot.init_state.pos = (0.35, -0.64, 0.01)
+        # Position the arms close to the table for the handoff task
+        self.scene.left_arm.init_state.pos = (4.5, -3.2, 0.75)
+        self.scene.left_arm.init_state.rot = (0.38268, 0.0, 0.0, -0.92388)
+
+        self.scene.right_arm.init_state.pos = (4.688, -3.012, 0.75)
+        self.scene.right_arm.init_state.rot = (0.38268, 0.0, 0.0, -0.92388)
 
         parse_usd_and_create_subassets(TEST_WITH_CUBE_USD_PATH, self)
 
@@ -124,7 +125,7 @@ class FridgeStockingEnvCfg(SingleArmTaskEnvCfg):
                     },
                 ),
                 randomize_camera_uniform(
-                    "front",
+                    "top",
                     pose_range={
                         "x": (-0.005, 0.005),
                         "y": (-0.005, 0.005),
@@ -137,3 +138,87 @@ class FridgeStockingEnvCfg(SingleArmTaskEnvCfg):
                 ),
             ],
         )
+
+        # TODO: Introduce subtask-specific reward shaping when porting this mimic setup to an RL task.
+
+
+@configclass
+class FridgeStockingMimicEnvCfg(FridgeStockingEnvCfg, MimicEnvCfg):
+    """Mimic configuration for the fridge stocking bi-arm task."""
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+
+        self.datagen_config.name = "fridge_stocking_biarm_task_v0"
+        self.datagen_config.generation_guarantee = True
+        self.datagen_config.generation_keep_failed = True
+        self.datagen_config.generation_num_trials = 10
+        self.datagen_config.generation_select_src_per_subtask = True
+        self.datagen_config.generation_transform_first_robot_pose = False
+        self.datagen_config.generation_interpolate_from_last_target_pose = True
+        self.datagen_config.generation_relative = True
+        self.datagen_config.max_num_failures = 30
+        self.datagen_config.seed = 42
+
+        subtask_configs: list[SubTaskConfig] = []
+
+        subtask_configs.append(
+            SubTaskConfig(
+                object_ref="fridge",
+                subtask_term_signal="open_fridge",
+                subtask_term_offset_range=(8, 16),
+                selection_strategy="nearest_neighbor_object",
+                selection_strategy_kwargs={"nn_k": 3},
+                action_noise=0.003,
+                num_interpolation_steps=5,
+                num_fixed_steps=0,
+                apply_noise_during_interpolation=False,
+                description="Open the fridge door",
+                next_subtask_description="Place the object onto the storage plate",
+            )
+        )
+        subtask_configs.append(
+            SubTaskConfig(
+                object_ref="cube",
+                subtask_term_signal="place_object",
+                subtask_term_offset_range=(10, 20),
+                selection_strategy="nearest_neighbor_object",
+                selection_strategy_kwargs={"nn_k": 3},
+                action_noise=0.002,
+                num_interpolation_steps=6,
+                num_fixed_steps=0,
+                apply_noise_during_interpolation=False,
+                description="Place the cube onto the storage plate",
+                next_subtask_description="Close the fridge door",
+            )
+        )
+        subtask_configs.append(
+            SubTaskConfig(
+                object_ref="fridge",
+                subtask_term_signal="close_fridge",
+                subtask_term_offset_range=(8, 16),
+                selection_strategy="nearest_neighbor_object",
+                selection_strategy_kwargs={"nn_k": 3},
+                action_noise=0.002,
+                num_interpolation_steps=5,
+                num_fixed_steps=0,
+                apply_noise_during_interpolation=False,
+                description="Close the fridge door",
+                next_subtask_description="Stabilize the robot",
+            )
+        )
+        subtask_configs.append(
+            SubTaskConfig(
+                object_ref=None,
+                subtask_term_signal=None,
+                subtask_term_offset_range=(0, 0),
+                selection_strategy="random",
+                selection_strategy_kwargs={},
+                action_noise=0.001,
+                num_interpolation_steps=5,
+                num_fixed_steps=0,
+                apply_noise_during_interpolation=False,
+            )
+        )
+
+        self.subtask_configs["so101_follower"] = subtask_configs
