@@ -53,10 +53,10 @@ class LiftCubeBiArmHandoffEnvCfg(BiArmTaskEnvCfg):
         self.viewer.lookat = (0.5, -0.6, 0.4)
 
         # Position the arms close to the table for the handoff task
-        self.scene.left_arm.init_state.pos = (0.2, -0.65, 0.01)
+        self.scene.left_arm.init_state.pos = (0.27, -0.65, 0.01)
         self.scene.left_arm.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
-        self.scene.right_arm.init_state.pos = (0.6, -0.65, 0.01)
+        self.scene.right_arm.init_state.pos = (0.53, -0.65, 0.01)
         self.scene.right_arm.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
         parse_usd_and_create_subassets(TABLE_WITH_CUBE_USD_PATH, self)

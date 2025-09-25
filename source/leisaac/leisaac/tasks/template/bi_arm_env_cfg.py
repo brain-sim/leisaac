@@ -67,7 +67,7 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
     top: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Left_Robot/base/top_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.2, 0.1, 0.5),
+            pos=(-0.13, 0.1, 0.5),
             rot=(0.0166924,  0.0402991, -0.3823192, -0.9230002), # wxyz
             convention="opengl",
         ),
