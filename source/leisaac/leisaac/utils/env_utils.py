@@ -3,10 +3,28 @@ import torch
 
 def dynamic_reset_gripper_effort_limit_sim(env, teleop_device):
     need_to_set = []
-    if teleop_device == "bi-so101leader":
-        need_to_set = [env.scene.articulations['left_arm'], env.scene.articulations['right_arm']]
+
+    articulations = getattr(env.scene, "articulations", {})
+
+    has_left_arm = 'left_arm' in articulations
+    has_right_arm = 'right_arm' in articulations
+    has_single_robot = 'robot' in articulations
+
+    if teleop_device == "bi-so101leader" or (teleop_device == "keyboard" and has_left_arm and has_right_arm):
+        if has_left_arm:
+            need_to_set.append(articulations['left_arm'])
+        if has_right_arm:
+            need_to_set.append(articulations['right_arm'])
     elif teleop_device in ["so101leader", "keyboard"]:
-        need_to_set = [env.scene['robot']]
+        # fallback to single-arm robot if available
+        if has_single_robot:
+            need_to_set.append(articulations['robot'])
+        else:
+            try:
+                need_to_set.append(env.scene['robot'])
+            except KeyError:
+                pass
+
     for arm in need_to_set:
         write_gripper_effort_limit_sim(env, arm)
     return
