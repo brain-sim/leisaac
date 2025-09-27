@@ -35,22 +35,23 @@ XLEROBOT_CFG = ArticulationCfg(
     actuators={
         "base_wheels": ImplicitActuatorCfg(
             joint_names_expr=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
-            stiffness=0.0,
-            damping=5000.0,
+            damping=None,
+            stiffness=None,
+            velocity_limit_sim=50.0,
         ),
         "right_arm": ImplicitActuatorCfg(
             joint_names_expr=["Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll", "Jaw"],
-            stiffness=25.0,
-            damping=2.0,
-            effort_limit_sim=30.0,
-            velocity_limit_sim=15.0,
+            effort_limit_sim=10,
+            velocity_limit_sim=10,
+            stiffness=17.8,
+            damping=0.60,
         ),
         "left_arm": ImplicitActuatorCfg(
             joint_names_expr=["Rotation_2", "Pitch_2", "Elbow_2", "Wrist_Pitch_2", "Wrist_Roll_2", "Jaw_2"],
-            stiffness=25.0,
-            damping=2.0,
-            effort_limit_sim=30.0,
-            velocity_limit_sim=15.0,
+            effort_limit_sim=10,
+            velocity_limit_sim=10,
+            stiffness=17.8,
+            damping=0.60,
         ),
         "head_pan": ImplicitActuatorCfg(
             joint_names_expr=["head_pan_joint"],

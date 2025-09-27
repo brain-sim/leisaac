@@ -53,7 +53,7 @@ def main() -> None:
         if not isinstance(action, torch.Tensor):
             action = torch.from_numpy(np.asarray(action)).to(env.device)
             action = action.view(env.num_envs, -1)
-            action[:, :3] = 0.0  # zero out base actions if present
+            action[:, :3] = torch.tensor([0.0, -10.0, 10.0]).to(env.device)  # zero out base actions if present
         print(action)
         obs, reward, terminated, truncated, info = env.step(action)
 

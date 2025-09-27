@@ -45,12 +45,12 @@ class XLeRobotTeleop(Device):
             "UP": 1.25 * self._base_speed * np.asarray([0.0, 1.0, -1.0], dtype=np.float32),
             "S": self._base_speed * np.asarray([0.0, -1.0, 1.0], dtype=np.float32),
             "DOWN": self._base_speed * np.asarray([0.0, -1.0, 1.0], dtype=np.float32),
-            "A": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
-            "LEFT": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
-            "D": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
-            "RIGHT": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
-            "Q": self._base_speed * np.asarray([1.0, 1.0, 1.0], dtype=np.float32),
-            "E": self._base_speed * np.asarray([-1.0, -1.0, -1.0], dtype=np.float32),
+            "A": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
+            "LEFT": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
+            "D": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
+            "RIGHT": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
+            "Q": self._base_speed * np.asarray([-1.0, -1.0, -1.0], dtype=np.float32),
+            "E": self._base_speed * np.asarray([1.0, 1.0, 1.0], dtype=np.float32),
         }
 
     def __del__(self):
