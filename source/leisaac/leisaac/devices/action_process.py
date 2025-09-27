@@ -75,11 +75,6 @@ def init_action_cfg(action_cfg, device):
             scale=0.7,
         )
     elif device in ['xlerobot', 'xlerobot_keyboard']:
-        action_cfg.base_motion_action = mdp.JointVelocityActionCfg(
-            asset_name="robot",
-            joint_names=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
-            scale=1.0,
-        )
         action_cfg.right_arm_action = mdp.JointPositionActionCfg(
             asset_name="robot",
             joint_names=["Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll", "Jaw"],
@@ -89,6 +84,11 @@ def init_action_cfg(action_cfg, device):
             asset_name="robot",
             joint_names=["Rotation_2", "Pitch_2", "Elbow_2", "Wrist_Pitch_2", "Wrist_Roll_2", "Jaw_2"],
             scale=1.0,
+        )
+        action_cfg.base_motion_action = mdp.JointVelocityActionCfg(
+            asset_name="robot",
+            joint_names=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
+            scale=20.0,
         )
         action_cfg.head_pan_action = mdp.JointPositionActionCfg(
             asset_name="robot",
@@ -165,9 +165,9 @@ def preprocess_device_action(action: dict[str, Any], teleop_device) -> torch.Ten
 
         head_tensor = _to_tensor(head_cmd, 1)
 
-        processed_action[:, :3] = base_tensor.view(1, -1)
-        processed_action[:, 3:9] = right_tensor.view(-1, 6)
-        processed_action[:, 9:15] = left_tensor.view(-1, 6)
+        processed_action[:, 0:6] = left_tensor.view(-1, 6)
+        processed_action[:, 6:12] = right_tensor.view(-1, 6)
+        processed_action[:, 12:15] = base_tensor.view(1, -1)
         processed_action[:, 15:] = head_tensor.view(1, -1)
     else:
         raise NotImplementedError("Only teleoperation with so101_leader, bi_so101_leader, keyboard, and xlerobot is supported for now.")

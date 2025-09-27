@@ -148,11 +148,6 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
         self.viewer.lookat = (4.4, -2.4, 1.0)
 
         # Configure actions for base, manipulators, and optional head pan.
-        self.actions.base_motion_action = mdp.JointVelocityActionCfg(
-            asset_name="robot",
-            joint_names=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
-            scale=1.0,
-        )
         self.actions.right_arm_action = mdp.JointPositionActionCfg(
             asset_name="robot",
             joint_names=["Rotation_2", "Pitch_2", "Elbow_2", "Wrist_Pitch_2", "Wrist_Roll_2", "Jaw_2"],
@@ -162,6 +157,11 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
             asset_name="robot",
             joint_names=["Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll", "Jaw"],
             scale=1.0,
+        )
+        self.actions.base_motion_action = mdp.JointVelocityActionCfg(
+            asset_name="robot",
+            joint_names=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
+            scale=20.0,
         )
         self.actions.head_pan_action = mdp.JointPositionActionCfg(
             asset_name="robot",

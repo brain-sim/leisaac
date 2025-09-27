@@ -187,7 +187,6 @@ def main():
         with torch.inference_mode():
             dynamic_reset_gripper_effort_limit_sim(env, args_cli.teleop_device)
             actions = teleop_interface.advance()
-            print(colored(f"Actions : {actions}", "green", attrs=["bold"]))
             if should_reset_task_success:
                 print("Task Success!!!")
                 should_reset_task_success = False

@@ -90,7 +90,7 @@ class XLeRobotTaskSceneCfg(InteractiveSceneCfg):
 
     top: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/XLeRobot/head_tilt_link/Camera/top_camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), convention="usd"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.966, -0.259, 0.0, 0.0), convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=28.0,
@@ -114,9 +114,9 @@ class XLeRobotTaskSceneCfg(InteractiveSceneCfg):
 class XLeRobotActionsCfg:
     """Action configuration placeholders."""
 
-    base_motion_action: mdp.ActionTermCfg = MISSING
     left_arm_action: mdp.ActionTermCfg = MISSING
     right_arm_action: mdp.ActionTermCfg = MISSING
+    base_motion_action: mdp.ActionTermCfg = MISSING
     head_pan_action: mdp.ActionTermCfg = MISSING
 
 
@@ -161,14 +161,15 @@ class XLeRobotObservationsCfg:
         wheel_joint_vel = ObsTerm(func=mdp.joint_vel, params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["axle_0_joint", "axle_1_joint", "axle_2_joint"])
         })
-        right_ee_state = ObsTerm(func=mdp.ee_frame_state, params={
-            "ee_frame_cfg": SceneEntityCfg("right_ee_frame"),
-            "robot_cfg": SceneEntityCfg("robot"),
-        })
         left_ee_state = ObsTerm(func=mdp.ee_frame_state, params={
             "ee_frame_cfg": SceneEntityCfg("left_ee_frame"),
             "robot_cfg": SceneEntityCfg("robot"),
         })
+        right_ee_state = ObsTerm(func=mdp.ee_frame_state, params={
+            "ee_frame_cfg": SceneEntityCfg("right_ee_frame"),
+            "robot_cfg": SceneEntityCfg("robot"),
+        })
+        
 
         actions = ObsTerm(func=mdp.last_action)
         left_rgb = ObsTerm(func=mdp.image, params={"sensor_cfg": SceneEntityCfg("left_wrist"), "data_type": "rgb", "normalize": False})
@@ -224,5 +225,4 @@ class XLeRobotTaskEnvCfg(ManagerBasedRLEnvCfg):
         self.actions = init_action_cfg(self.actions, device=teleop_device)
 
     def preprocess_device_action(self, action: dict[str, Any], teleop_device) -> Any:
-        print(colored(f"Preprocessing action {action} for device: {teleop_device}", "magenta", attrs=["bold"]))
         return preprocess_device_action(action, teleop_device)

@@ -38,17 +38,17 @@ class XLeRobotTeleop(Device):
             self._on_keyboard_event,
         )
 
-        self._base_speed = 10.0
+        self._base_speed = 1.0
 
         self._BASE_KEY_MAPPING = {
             "W": 1.25 * self._base_speed * np.asarray([0.0, 1.0, -1.0], dtype=np.float32),
             "UP": 1.25 * self._base_speed * np.asarray([0.0, 1.0, -1.0], dtype=np.float32),
             "S": self._base_speed * np.asarray([0.0, -1.0, 1.0], dtype=np.float32),
             "DOWN": self._base_speed * np.asarray([0.0, -1.0, 1.0], dtype=np.float32),
-            "A": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
-            "LEFT": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
-            "D": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
-            "RIGHT": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
+            "A": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
+            "LEFT": self._base_speed * np.asarray([-1.0, 0.45, 0.45], dtype=np.float32),
+            "D": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
+            "RIGHT": self._base_speed * np.asarray([1.0, -0.45, -0.45], dtype=np.float32),
             "Q": self._base_speed * np.asarray([-1.0, -1.0, -1.0], dtype=np.float32),
             "E": self._base_speed * np.asarray([1.0, 1.0, 1.0], dtype=np.float32),
         }
@@ -99,9 +99,9 @@ class XLeRobotTeleop(Device):
 
     def get_device_state(self):
         return {
-            "base": self._base_command,
             "left_arm": self.left_leader.get_device_state(),
             "right_arm": self.right_leader.get_device_state(),
+            "base": self._base_command,
         }
 
     def input2action(self):
@@ -123,9 +123,9 @@ class XLeRobotTeleop(Device):
             return ac_dict
 
         ac_dict['joint_state'] = {
-            "base": state['joint_state']['base'],
             "left_arm": state['joint_state']['left_arm'],
             "right_arm": state['joint_state']['right_arm'],
+            "base": state['joint_state']['base'],
             "head_pan": np.asarray([0.0], dtype=np.float32),
         }
         ac_dict['motor_limits'] = {
@@ -136,7 +136,6 @@ class XLeRobotTeleop(Device):
 
     def _on_keyboard_event(self, event, *args, **kwargs):
         key_name = event.input.name if hasattr(event.input, "name") else event.input
-        print(colored(self._base_command, "magenta", attrs=["bold"]))
         if event.type == carb.input.KeyboardEventType.KEY_PRESS:
             if key_name in self._BASE_KEY_MAPPING:
                 if key_name not in self._pressed_keys:
