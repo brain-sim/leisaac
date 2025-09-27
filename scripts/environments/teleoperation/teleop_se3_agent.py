@@ -12,11 +12,17 @@ if multiprocessing.get_start_method() != "spawn":
 import argparse
 
 from isaaclab.app import AppLauncher
-
+from termcolor import colored
 # add argparse arguments
 parser = argparse.ArgumentParser(description="leisaac teleoperation for leisaac environments.")
 parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to simulate.")
-parser.add_argument("--teleop_device", type=str, default="keyboard", choices=['keyboard', 'so101leader', 'bi-so101leader'], help="Device for interacting with environment")
+parser.add_argument(
+    "--teleop_device",
+    type=str,
+    default="keyboard",
+    choices=['keyboard', 'so101leader', 'bi-so101leader', 'xlerobot'],
+    help="Device for interacting with environment",
+)
 parser.add_argument("--port", type=str, default='/dev/ttyACM0', help="Port for the teleop device:so101leader, default is /dev/ttyACM0")
 parser.add_argument("--left_arm_port", type=str, default='/dev/ttyACM0', help="Port for the left teleop device:bi-so101leader, default is /dev/ttyACM0")
 parser.add_argument("--right_arm_port", type=str, default='/dev/ttyACM1', help="Port for the right teleop device:bi-so101leader, default is /dev/ttyACM1")
@@ -53,7 +59,7 @@ from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab_tasks.utils import parse_env_cfg
 from isaaclab.managers import TerminationTermCfg
 
-from leisaac.devices import Se3Keyboard, SO101Leader, BiSO101Leader
+from leisaac.devices import Se3Keyboard, SO101Leader, BiSO101Leader, XLeRobotTeleop
 from leisaac.enhance.managers import StreamingRecorderManager
 from leisaac.utils.env_utils import dynamic_reset_gripper_effort_limit_sim
 
@@ -139,6 +145,8 @@ def main():
         teleop_interface = SO101Leader(env, port=args_cli.port, recalibrate=args_cli.recalibrate)
     elif args_cli.teleop_device == "bi-so101leader":
         teleop_interface = BiSO101Leader(env, left_port=args_cli.left_arm_port, right_port=args_cli.right_arm_port, recalibrate=args_cli.recalibrate)
+    elif args_cli.teleop_device == "xlerobot":
+        teleop_interface = XLeRobotTeleop(env, left_port=args_cli.left_arm_port, right_port=args_cli.right_arm_port, recalibrate=args_cli.recalibrate)
     else:
         raise ValueError(
             f"Invalid device interface '{args_cli.teleop_device}'. Supported: 'keyboard', 'so101leader', 'bi-so101leader'."
@@ -179,6 +187,7 @@ def main():
         with torch.inference_mode():
             dynamic_reset_gripper_effort_limit_sim(env, args_cli.teleop_device)
             actions = teleop_interface.advance()
+            print(colored(f"Actions : {actions}", "green", attrs=["bold"]))
             if should_reset_task_success:
                 print("Task Success!!!")
                 should_reset_task_success = False

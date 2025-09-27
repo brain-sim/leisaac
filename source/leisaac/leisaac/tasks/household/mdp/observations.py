@@ -33,7 +33,11 @@ def object_grasped(
         return default_result
 
     object_pos = object.data.root_pos_w
-    end_effector_pos = ee_frame.data.target_pos_w[:, 1, :]
+    target_pos = getattr(ee_frame.data, "target_pos_w", None)
+    if target_pos is None or target_pos.shape[1] == 0:
+        return default_result
+
+    end_effector_pos = target_pos[:, -1, :]
     pos_diff = torch.linalg.vector_norm(object_pos - end_effector_pos, dim=1)
 
     grasped = torch.logical_and(pos_diff < diff_threshold, robot.data.joint_pos[:, -1] < grasp_threshold)
@@ -181,3 +185,67 @@ def object_placed(
         grasped = torch.zeros_like(near_target)
 
     return torch.logical_and(near_target, torch.logical_not(grasped))
+
+
+def _resolve_root_position(
+        env: ManagerBasedRLEnv,
+        entity_cfg: SceneEntityCfg | None,
+) -> torch.Tensor | None:
+    if entity_cfg is None or entity_cfg.name == "":
+        return None
+
+    try:
+        entity = env.scene[entity_cfg.name]
+    except KeyError:
+        return None
+
+    if hasattr(entity, "data") and hasattr(entity.data, "root_pos_w"):
+        return entity.data.root_pos_w
+    return None
+
+
+def robot_to_object_distance(
+        env: ManagerBasedRLEnv,
+        robot_cfg: SceneEntityCfg,
+        object_cfg: SceneEntityCfg,
+) -> torch.Tensor | None:
+    robot_pos = _resolve_root_position(env, robot_cfg)
+    object_pos = _resolve_root_position(env, object_cfg)
+    if robot_pos is None or object_pos is None:
+        return None
+    return torch.linalg.vector_norm(robot_pos - object_pos, dim=1)
+
+
+def robot_close_to_object(
+        env: ManagerBasedRLEnv,
+        robot_cfg: SceneEntityCfg,
+        object_cfg: SceneEntityCfg,
+        distance_threshold: float,
+) -> torch.Tensor:
+    distances = robot_to_object_distance(env, robot_cfg, object_cfg)
+    if distances is None:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    return distances < distance_threshold
+
+
+def robot_close_to_target(
+        env: ManagerBasedRLEnv,
+        robot_cfg: SceneEntityCfg,
+        target_cfg: SceneEntityCfg | None = None,
+        target_position: tuple[float, float, float] | None = None,
+        distance_threshold: float = 0.5,
+) -> torch.Tensor:
+    robot_pos = _resolve_root_position(env, robot_cfg)
+
+    if robot_pos is None:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    target_pos = _resolve_root_position(env, target_cfg) if target_cfg is not None else None
+
+    if target_pos is None:
+        if target_position is None:
+            return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        target_pos = torch.tensor(target_position, dtype=robot_pos.dtype, device=env.device).repeat(robot_pos.shape[0], 1)
+
+    distances = torch.linalg.vector_norm(robot_pos - target_pos, dim=1)
+    return distances < distance_threshold
