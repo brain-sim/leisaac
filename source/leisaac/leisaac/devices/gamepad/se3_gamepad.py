@@ -1,7 +1,3 @@
-"""Temporary overwrite of the gamepad control, bindings are not perfect now
-Command are the same as before, just add: --teleop_device=keyboard
-python scripts/environments/teleoperation/teleop_se3_agent.py --teleop_device=keyboard --task=Household-FridgeStocking-v0   --num_envs=1   --device=cuda   --enable_cameras
-"""
 import weakref
 import numpy as np
 
@@ -14,7 +10,7 @@ import omni
 from ..device_base import Device
 
 
-class Se3Keyboard(Device):
+class Se3Gamepad(Device):
     """A gamepad teleoperation interface that commands Cartesian twists.
 
     For bi-arm tasks, use L1 and R1 to select which arm to control.
