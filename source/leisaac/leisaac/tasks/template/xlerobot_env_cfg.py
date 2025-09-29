@@ -58,7 +58,7 @@ class XLeRobotTaskSceneCfg(InteractiveSceneCfg):
 
     left_wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/XLeRobot/Fixed_Jaw_2/Left_Arm_Camera/wrist_camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), convention="usd"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.7071, 0.0, -0.7071, 0.0), convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=35.0,
@@ -74,7 +74,7 @@ class XLeRobotTaskSceneCfg(InteractiveSceneCfg):
 
     right_wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/XLeRobot/Fixed_Jaw/Right_Arm_Camera/wrist_camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.0, 0.0, 0.0, 1.0), convention="usd"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 0.0), rot=(0.7071, 0.0, -0.7071, 0.0), convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=35.0,
