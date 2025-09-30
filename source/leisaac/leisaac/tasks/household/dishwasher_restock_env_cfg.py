@@ -8,7 +8,12 @@ from isaaclab.utils import configclass
 
 from leisaac.assets.scenes.test import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
 from leisaac.utils.general_assets import parse_usd_and_create_subassets
-from leisaac.utils.domain_randomization import randomize_object_uniform, randomize_camera_uniform, domain_randomization
+from leisaac.utils.domain_randomization import (
+    randomize_object_uniform,
+    randomize_camera_uniform,
+    randomize_objects_permutation,
+    domain_randomization,
+)
 from leisaac.utils.env_utils import delete_attribute
 
 from . import mdp
@@ -83,6 +88,12 @@ class DishwasherRestockEnvCfg(BiArmTaskEnvCfg):
         domain_randomization(
             self,
             random_options=[
+                randomize_objects_permutation(
+                    ["dish_plate", "soap_bottle", "produce_item", "counter_knives"],
+                    position_noise=0.07,
+                    scene_cfg=self.scene,
+                    reference_name="loading_table",
+                ),
                 randomize_object_uniform(
                     "cube",
                     pose_range={

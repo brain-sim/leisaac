@@ -124,7 +124,7 @@ class FridgeStockingEnvCfg(BiArmTaskEnvCfg):
             random_options=[
                 randomize_objects_permutation(
                     ["storage_plate", "juice_bottle", "fruit_bundle", "prep_knives"],
-                    position_noise=0.05,
+                    position_noise=0.07,
                     yaw_range=(-torch.pi, torch.pi),
                     scene_cfg=self.scene,
                     reference_name="stock_table",
