@@ -1,154 +1,74 @@
+from __future__ import annotations
 from pathlib import Path
 
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
-
 from leisaac.utils.constant import ASSETS_ROOT
 
-
-"""Configuration for the XLEROBOT dual-arm mobile robot."""
 XLEROBOT_ASSET_PATH = Path(ASSETS_ROOT) / "robots" / "xlerobot.usd"
-
 XLEROBOT_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=str(XLEROBOT_ASSET_PATH),
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=False,
-        ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
-            solver_position_iteration_count=4,
-            solver_velocity_iteration_count=4,
-            fix_root_link=True,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=8,
+            solver_velocity_iteration_count=8,
+            fix_root_link=False,
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(2.2, -0.61, 0.89),
-        rot=(0.0, 0.0, 0.0, 1.0),
+        pos=(5.0, -3.9, 0.01),
+        rot=(0.17365, 0, 0, -0.98481),
         joint_pos={
-            "shoulder_pan_l": 0.0,
-            "shoulder_lift_l": 0.0,
-            "elbow_flex_l": 0.0,
-            "wrist_flex_l": 0.0,
-            "wrist_roll_l": 0.0,
-            "gripper_l": 0.0,
-            "shoulder_pan_r": 0.0,
-            "shoulder_lift_r": 0.0,
-            "elbow_flex_r": 0.0,
-            "wrist_flex_r": 0.0,
-            "wrist_roll_r": 0.0,
-            "gripper_r": 0.0,
-            "axle_0_joint": 0.0,
-            "axle_1_joint": 0.0,
-            "axle_2_joint": 0.0,
-        }
+            ".*": 0.0,
+        },
+        joint_vel={
+            ".*": 0.0,
+        },
     ),
     actuators={
-        "sts3215-gripper-l": ImplicitActuatorCfg(
-            joint_names_expr=["gripper_l"],
-            effort_limit_sim=10,
-            velocity_limit_sim=10,
-            stiffness=17.8,
-            damping=0.60,
-        ),
-        "sts3215-arm-l": ImplicitActuatorCfg(
+        "left_arm": ImplicitActuatorCfg(
             joint_names_expr=[
-                "shoulder_pan_l",
-                "shoulder_lift_l",
-                "elbow_flex_l",
-                "wrist_flex_l",
-                "wrist_roll_l",
+                "Rotation_2",
+                "Pitch_2",
+                "Elbow_2",
+                "Wrist_Pitch_2",
+                "Wrist_Roll_2",
+                "Jaw_2",
             ],
             effort_limit_sim=10,
             velocity_limit_sim=10,
             stiffness=17.8,
             damping=0.60,
         ),
-        "sts3215-gripper-r": ImplicitActuatorCfg(
-            joint_names_expr=["gripper_r"],
-            effort_limit_sim=10,
-            velocity_limit_sim=10,
-            stiffness=17.8,
-            damping=0.60,
-        ),
-        "sts3215-arm-r": ImplicitActuatorCfg(
+        "right_arm": ImplicitActuatorCfg(
             joint_names_expr=[
-                "shoulder_pan_r",
-                "shoulder_lift_r",
-                "elbow_flex_r",
-                "wrist_flex_r",
-                "wrist_roll_r",
+                "Rotation",
+                "Pitch",
+                "Elbow",
+                "Wrist_Pitch",
+                "Wrist_Roll",
+                "Jaw",
             ],
             effort_limit_sim=10,
             velocity_limit_sim=10,
             stiffness=17.8,
             damping=0.60,
         ),
-        "omni-wheel-drive": ImplicitActuatorCfg(
+        "base_wheels": ImplicitActuatorCfg(
             joint_names_expr=["axle_0_joint", "axle_1_joint", "axle_2_joint"],
-            effort_limit_sim=10,
-            velocity_limit_sim=10,
-            stiffness=17.8,
-            damping=0.60,
+            damping=None,
+            stiffness=None,
+            # velocity_limit_sim=50.0,
+        ),
+        "head_pan": ImplicitActuatorCfg(
+            joint_names_expr=["head_pan_joint"],
+            stiffness=15.0,
+            damping=1.0,
+            effort_limit_sim=10.0,
+            velocity_limit_sim=5.0,
         ),
     },
     soft_joint_pos_limit_factor=1.0,
 )
-
-# joint limit written in USD (degree)
-XLEROBOT_USD_JOINT_LIMLITS = {
-    "shoulder_pan_l": (-110.0, 110.0),
-    "shoulder_lift_l": (-100.0, 100.0),
-    "elbow_flex_l": (-100.0, 90.0),
-    "wrist_flex_l": (-95.0, 95.0),
-    "wrist_roll_l": (-160.0, 160.0),
-    "gripper_l": (-10.0, 100.0),
-    "shoulder_pan_r": (-110.0, 110.0),
-    "shoulder_lift_r": (-100.0, 100.0),
-    "elbow_flex_r": (-100.0, 90.0),
-    "wrist_flex_r": (-95.0, 95.0),
-    "wrist_roll_r": (-160.0, 160.0),
-    "gripper_r": (-10.0, 100.0),
-    "axle_0_joint": (-360.0, 360.0),
-    "axle_1_joint": (-360.0, 360.0),
-    "axle_2_joint": (-360.0, 360.0),
-}
-
-# motor limit written in real device (normalized to related range)
-XLEROBOT_MOTOR_LIMITS = {
-    "shoulder_pan_l": (-100.0, 100.0),
-    "shoulder_lift_l": (-100.0, 100.0),
-    "elbow_flex_l": (-100.0, 100.0),
-    "wrist_flex_l": (-100.0, 100.0),
-    "wrist_roll_l": (-100.0, 100.0),
-    "gripper_l": (0.0, 100.0),
-    "shoulder_pan_r": (-100.0, 100.0),
-    "shoulder_lift_r": (-100.0, 100.0),
-    "elbow_flex_r": (-100.0, 100.0),
-    "wrist_flex_r": (-100.0, 100.0),
-    "wrist_roll_r": (-100.0, 100.0),
-    "gripper_r": (0.0, 100.0),
-    "axle_0_joint": (-100.0, 100.0),
-    "axle_1_joint": (-100.0, 100.0),
-    "axle_2_joint": (-100.0, 100.0),
-}
-
-
-XLEROBOT_REST_POSE_RANGE = {
-    "shoulder_pan_l": (-30.0, 30.0),  # 0 degree
-    "shoulder_lift_l": (-130.0, -70.0),  # -100 degree
-    "elbow_flex_l": (60.0, 120.0),  # 90 degree
-    "wrist_flex_l": (20.0, 80.0),  # 50 degree
-    "wrist_roll_l": (-30.0, 30.0),  # 0 degree
-    "gripper_l": (-40.0, 20.0),  # -10 degree
-    "shoulder_pan_r": (-30.0, 30.0),  # 0 degree
-    "shoulder_lift_r": (-130.0, -70.0),  # -100 degree
-    "elbow_flex_r": (60.0, 120.0),  # 90 degree
-    "wrist_flex_r": (20.0, 80.0),  # 50 degree
-    "wrist_roll_r": (-30.0, 30.0),  # 0 degree
-    "gripper_r": (-40.0, 20.0),  # -10 degree
-    "axle_0_joint": (-5.0, 5.0),  # centered wheel
-    "axle_1_joint": (-5.0, 5.0),  # centered wheel
-    "axle_2_joint": (-5.0, 5.0),  # centered wheel
-}

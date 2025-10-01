@@ -4,6 +4,9 @@ import torch
 def dynamic_reset_gripper_effort_limit_sim(env, teleop_device):
     need_to_set = []
 
+    if teleop_device in ["xlerobot", "xlerobot_keyboard"]:
+        need_to_set = [env.scene['robot']]
+
     articulations = getattr(env.scene, "articulations", {})
 
     has_left_arm = 'left_arm' in articulations
