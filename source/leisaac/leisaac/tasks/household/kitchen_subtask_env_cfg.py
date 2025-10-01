@@ -13,7 +13,7 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
-from leisaac.assets.scenes.test import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
+from source.leisaac.leisaac.assets.scenes.empty import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
 from leisaac.utils.domain_randomization import (
     domain_randomization,
     randomize_camera_uniform,

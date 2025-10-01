@@ -12,7 +12,7 @@ from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
-from leisaac.assets.scenes.test import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
+from source.leisaac.leisaac.assets.scenes.empty import TEST_WITH_CUBE_CFG, TEST_WITH_CUBE_USD_PATH
 from leisaac.utils.general_assets import parse_usd_and_create_subassets
 from leisaac.utils.domain_randomization import randomize_object_uniform, randomize_camera_uniform, domain_randomization
 from leisaac.utils.env_utils import delete_attribute
