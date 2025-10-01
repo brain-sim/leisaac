@@ -198,7 +198,7 @@ class FridgeStockingSequentialReward:
             # print("Stage 3 active on envs")
             params3 = stage3.params
             door_open = fridge_door_opened(
-                env, fridge_cfg=params3["fridge_cfg"], debug=True
+                env, fridge_cfg=params3["fridge_cfg"], debug=False
             )
             newly_completed = mask3 & door_open & (~self._stage_completion[:, 3])
             reward[newly_completed] += self._stage_rewards[3]
