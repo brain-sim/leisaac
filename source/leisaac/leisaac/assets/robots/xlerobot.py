@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from pathlib import Path
 
 import isaaclab.sim as sim_utils
@@ -8,8 +7,6 @@ from isaaclab.assets.articulation import ArticulationCfg
 from leisaac.utils.constant import ASSETS_ROOT
 
 XLEROBOT_ASSET_PATH = Path(ASSETS_ROOT) / "robots" / "xlerobot.usd"
-
-
 XLEROBOT_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=str(XLEROBOT_ASSET_PATH),
