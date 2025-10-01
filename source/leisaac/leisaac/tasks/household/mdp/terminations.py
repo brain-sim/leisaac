@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import torch
-
-from isaaclab.assets import RigidObject, Articulation
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.assets import Articulation, RigidObject
 from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.managers import SceneEntityCfg
 
 from .observations import fridge_door_closed, object_placed
 
 
-def cube_height_above_base(env: ManagerBasedRLEnv, cube_cfg: SceneEntityCfg, robot_cfg: SceneEntityCfg, robot_base_name: str = "base", height_threshold: float = 0.20) -> torch.Tensor:
+def cube_height_above_base(
+    env: ManagerBasedRLEnv,
+    cube_cfg: SceneEntityCfg,
+    robot_cfg: SceneEntityCfg,
+    robot_base_name: str = "base",
+    height_threshold: float = 0.20,
+) -> torch.Tensor:
     """Determine if the cube is above the robot base.
 
     This function checks whether all success conditions for the task have been met:
@@ -37,16 +42,18 @@ def cube_height_above_base(env: ManagerBasedRLEnv, cube_cfg: SceneEntityCfg, rob
 
 
 def fridge_stocking_completed(
-        env: ManagerBasedRLEnv,
-        object_cfg: SceneEntityCfg,
-        target_cfg: SceneEntityCfg | None = None,
-        fridge_cfg: SceneEntityCfg = SceneEntityCfg("fridge"),
-        robot_cfg: SceneEntityCfg | None = None,
-        ee_frame_cfg: SceneEntityCfg | None = None,
-        target_position: tuple[float, float, float] | None = None,
-        close_threshold: float = 0.1,
-        xy_threshold: float = 0.15,
-        z_threshold: float = 0.05) -> torch.Tensor:
+    env: ManagerBasedRLEnv,
+    object_cfg: SceneEntityCfg,
+    target_cfg: SceneEntityCfg | None = None,
+    fridge_cfg: SceneEntityCfg = SceneEntityCfg("fridge"),
+    robot_cfg: SceneEntityCfg | None = None,
+    left_ee_frame_cfg: SceneEntityCfg | None = None,
+    right_ee_frame_cfg: SceneEntityCfg | None = None,
+    target_position: tuple[float, float, float] | None = None,
+    close_threshold: float = 0.1,
+    xy_threshold: float = 0.15,
+    z_threshold: float = 0.05,
+) -> torch.Tensor:
     """Evaluate success for the fridge stocking task.
 
     The task succeeds when the object is placed near the target location and the fridge door
@@ -59,7 +66,8 @@ def fridge_stocking_completed(
         target_cfg=target_cfg,
         target_position=target_position,
         robot_cfg=robot_cfg,
-        ee_frame_cfg=ee_frame_cfg,
+        left_ee_frame_cfg=left_ee_frame_cfg,
+        right_ee_frame_cfg=right_ee_frame_cfg,
         xy_threshold=xy_threshold,
         z_threshold=z_threshold,
     )

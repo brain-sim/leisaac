@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from typing import Any
 
 import isaaclab.envs.mdp as mdp
@@ -143,8 +144,16 @@ def preprocess_device_action(action: dict[str, Any], teleop_device) -> torch.Ten
 
         def _to_tensor(values, expected_len):
             if isinstance(values, torch.Tensor):
-                return values.to(device=device, dtype=torch.float32)
-            return torch.tensor(values, dtype=torch.float32, device=device).view(-1)[:expected_len]
+                tensor = values.to(device=device, dtype=torch.float32)
+            elif isinstance(values, (np.ndarray, np.generic)):
+                tensor = torch.as_tensor(values, device=device, dtype=torch.float32)
+            else:
+                if isinstance(values, (list, tuple)) and any(isinstance(v, np.ndarray) for v in values):
+                    values = np.asarray(values, dtype=np.float32)
+                    tensor = torch.as_tensor(values, device=device)
+                else:
+                    tensor = torch.tensor(values, dtype=torch.float32, device=device)
+            return tensor.view(-1)[:expected_len]
 
         base_cmd = joint_state.get('base', [0.0, 0.0, 0.0])
         right_cmd = joint_state.get('right_arm', [0.0] * 6)
