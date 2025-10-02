@@ -83,7 +83,7 @@ _SUBTASK_REGISTRY: Dict[str, SubtaskFunctionSpec] = {
     ),
     "door_open": SubtaskFunctionSpec(
         func=mdp.fridge_door_opened,
-        required_params=("fridge_cfg",),
+        required_params=("fridge_prim_path", "door_joint_names"),
         default_mimic_kwargs={
             "selection_strategy": "nearest_neighbor_object",
             "selection_strategy_kwargs": {"nn_k": 3},
@@ -108,7 +108,7 @@ _SUBTASK_REGISTRY: Dict[str, SubtaskFunctionSpec] = {
     ),
     "door_closed": SubtaskFunctionSpec(
         func=mdp.fridge_door_closed,
-        required_params=("fridge_cfg",),
+        required_params=("fridge_prim_path", "door_joint_names"),
         default_mimic_kwargs={
             "selection_strategy": "nearest_neighbor_object",
             "selection_strategy_kwargs": {"nn_k": 3},

@@ -1,3 +1,6 @@
+from collections.abc import Sequence
+
+import omni.usd
 import torch
 
 import isaaclab.utils.math as math_utils
@@ -112,3 +115,93 @@ def joint_pos_target(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEnti
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     return asset.data.joint_pos_target[:, asset_cfg.joint_ids]
+
+
+def _resolve_env_prim_path(env: ManagerBasedEnv, expr: str, env_index: int) -> str:
+    env_roots = getattr(env.scene, "env_prim_paths", None)
+    env_root = (
+        env_roots[env_index]
+        if env_roots is not None
+        else f"{env.scene.env_ns}/env_{env_index}"
+    )
+    resolved = (
+        expr.replace("{ENV_REGEX_NS}", env_root)
+        .replace("ENV_REGEX_NS", env_root)
+        .replace("{ENV_NS}", env.scene.env_ns)
+        .replace("ENV_NS", env.scene.env_ns)
+        .replace("env_.*", f"env_{env_index}")
+    )
+    if not resolved.startswith("/"):
+        resolved = f"{env_root.rstrip('/')}/{resolved.lstrip('/')}"
+    return resolved
+
+
+def _rotation_tensor_from_prim(prim, device: torch.device) -> torch.Tensor:
+    matrix = omni.usd.get_world_transform_matrix(prim)
+    rows = []
+    for row_idx in range(3):
+        usd_row = matrix.GetRow(row_idx)
+        rows.append([float(usd_row[0]), float(usd_row[1]), float(usd_row[2])])
+    return torch.tensor(rows, dtype=torch.float32, device=device)
+
+
+def fridge_door_angles_from_prim_paths(
+    env: ManagerBasedRLEnv,
+    door_prim_paths: Sequence[str],
+    parent_prim_paths: Sequence[str] | None = None,
+) -> torch.Tensor:
+    """Return fridge door angles (radians) computed from prim transforms.
+
+    Args:
+        env: The environment providing access to the USD stage.
+        door_prim_paths: Prim path templates for the door xforms, one per angle column.
+        parent_prim_paths: Optional parent prim templates. When omitted, the door's
+            immediate parent path is used.
+
+    Returns:
+        Tensor of shape ``(num_envs, len(door_prim_paths))`` with angles in radians.
+        Entries remain ``nan`` when either prim in the pair is missing.
+    """
+
+    door_exprs = list(door_prim_paths)
+    if not door_exprs:
+        return torch.empty(env.num_envs, 0, dtype=torch.float32, device=env.device)
+
+    if parent_prim_paths is None:
+        parent_exprs = [expr.rsplit("/", 1)[0] if "/" in expr else expr for expr in door_exprs]
+    else:
+        parent_exprs = list(parent_prim_paths)
+        if len(parent_exprs) != len(door_exprs):
+            raise ValueError("parent_prim_paths must match door_prim_paths length.")
+
+    angles = torch.full(
+        (env.num_envs, len(door_exprs)),
+        float("nan"),
+        dtype=torch.float32,
+        device=env.device,
+    )
+
+    stage = env.scene.stage
+
+    for env_index in range(env.num_envs):
+        for col_index, (door_expr, parent_expr) in enumerate(zip(door_exprs, parent_exprs)):
+            door_path = _resolve_env_prim_path(env, door_expr, env_index)
+            parent_path = _resolve_env_prim_path(env, parent_expr, env_index)
+            door_prim = stage.GetPrimAtPath(door_path)
+            parent_prim = stage.GetPrimAtPath(parent_path)
+            if not door_prim.IsValid() or not parent_prim.IsValid():
+                continue
+
+            door_rot = _rotation_tensor_from_prim(door_prim, env.device).unsqueeze(0)
+            parent_rot = _rotation_tensor_from_prim(parent_prim, env.device).unsqueeze(0)
+
+            door_quat = math_utils.quat_from_matrix(door_rot)[0]
+            parent_quat = math_utils.quat_from_matrix(parent_rot)[0]
+            relative_quat = math_utils.quat_mul(
+                math_utils.quat_inv(parent_quat.unsqueeze(0)),
+                door_quat.unsqueeze(0),
+            )[0]
+            axis_angle = math_utils.axis_angle_from_quat(relative_quat.unsqueeze(0))[0]
+            angles[env_index, col_index] = torch.linalg.vector_norm(axis_angle, dim=-1)
+
+    return angles

@@ -105,7 +105,7 @@ import torch
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import TerminationTermCfg
 from isaaclab_tasks.utils import parse_env_cfg
-from leisaac.devices import BiSO101Leader, Se3Keyboard, SO101Leader, XLeRobotTeleop
+from leisaac.devices import BiSO101Leader, Se3Keyboard, SO101Leader, XLeRobotLeader
 from leisaac.enhance.managers import StreamingRecorderManager
 from leisaac.utils.env_utils import dynamic_reset_gripper_effort_limit_sim
 
@@ -230,7 +230,7 @@ def main():
             recalibrate=args_cli.recalibrate,
         )
     elif args_cli.teleop_device == "xlerobot":
-        teleop_interface = XLeRobotTeleop(
+        teleop_interface = XLeRobotLeader(
             env,
             left_port=args_cli.left_arm_port,
             right_port=args_cli.right_arm_port,

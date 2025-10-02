@@ -7,7 +7,7 @@ from ..device_base import Device
 from .so101_leader import SO101Leader
 
 
-class XLeRobotTeleop(Device):
+class XLeRobotLeader(Device):
     """Teleoperation interface combining keyboard base control with dual SO101 leaders."""
 
     def __init__(

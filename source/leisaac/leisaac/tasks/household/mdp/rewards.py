@@ -9,6 +9,8 @@ from isaaclab.envs import ManagerBasedRLEnv
 if TYPE_CHECKING:
     from .subtasks import ResolvedSubtask
 
+from termcolor import colored
+
 from .observations import (
     fridge_door_closed,
     fridge_door_opened,
@@ -100,11 +102,10 @@ class FridgeStockingSequentialReward:
                 prev_lengths.copy_(episode_lengths)
 
         # Stage 0: approach the object
-        stage0 = self.sequence[0]
         mask0 = active_states == 0
         if torch.any(mask0):
             # print("Stage 0 active on envs")
-            params0 = stage0.params
+            params0 = self.sequence[0].params
             distance_threshold0 = float(params0.get("distance_threshold", 0.9))
             close_mask = robot_close_to_object(
                 env,
@@ -112,11 +113,19 @@ class FridgeStockingSequentialReward:
                 object_cfg=params0["object_cfg"],
                 distance_threshold=distance_threshold0,
             )
+
             newly_completed = mask0 & close_mask & (~self._stage_completion[:, 0])
             reward[newly_completed] += self._stage_rewards[0]
             self._stage_completion[newly_completed, 0] = True
             active_states[newly_completed] = 1
-
+            param3 = self.sequence[3].params
+            door_open = fridge_door_opened(
+                env,
+                fridge_prim_path=param3.get("fridge_prim_path", ""),
+                door_joint_names=param3.get("door_joint_names", []),
+            )
+            if door_open.any():
+                print(colored("Door open ", "green", attrs=["bold"]))
             pending = mask0 & (~close_mask)
             distances = robot_to_object_distance(
                 env, params0["robot_cfg"], params0["object_cfg"]
@@ -127,11 +136,10 @@ class FridgeStockingSequentialReward:
                 )
 
         # Stage 1: grasp the object
-        stage1 = self.sequence[1]
         mask1 = active_states == 1
         if torch.any(mask1):
-            # print("Stage 1 active on envs")
-            params1 = stage1.params
+            params1 = self.sequence[1].params
+
             grasped = object_grasped(
                 env,
                 robot_cfg=params1["robot_cfg"],
@@ -145,11 +153,10 @@ class FridgeStockingSequentialReward:
             active_states[newly_completed] = 2
 
         # Stage 2: move towards fridge while holding object
-        stage2 = self.sequence[2]
         mask2 = active_states == 2
         if torch.any(mask2):
-            # print("Stage 2 active on envs")
-            params2 = stage2.params
+            print("Stage 2 active on envs")
+            params2 = self.sequence[2].params
             distance_threshold2 = float(params2.get("distance_threshold", 1.5))
             near_fridge = robot_close_to_target(
                 env,
@@ -192,13 +199,13 @@ class FridgeStockingSequentialReward:
                 self._stage_completion[dropped_mask, 2] = False
 
         # Stage 3: open fridge door
-        stage3 = self.sequence[3]
         mask3 = active_states == 3
         if torch.any(mask3):
-            # print("Stage 3 active on envs")
-            params3 = stage3.params
+            params3 = self.sequence[3].params
             door_open = fridge_door_opened(
-                env, fridge_cfg=params3["fridge_cfg"], debug=False
+                env,
+                fridge_prim_path=params3["fridge_prim_path"],
+                door_joint_names=params3.get("door_joint_names", []),
             )
             newly_completed = mask3 & door_open & (~self._stage_completion[:, 3])
             reward[newly_completed] += self._stage_rewards[3]
@@ -206,22 +213,24 @@ class FridgeStockingSequentialReward:
             active_states[newly_completed] = 4
 
         # Stage 4: place object inside fridge
-        stage4 = self.sequence[4]
         mask4 = active_states == 4
         if torch.any(mask4):
-            params4 = stage4.params
-            placed = object_placed(env, **params4)
+            params4 = self.sequence[4].params
+            placed = object_placed(env, **params4, debug=True)
             newly_completed = mask4 & placed & (~self._stage_completion[:, 4])
             reward[newly_completed] += self._stage_rewards[4]
             self._stage_completion[newly_completed, 4] = True
             active_states[newly_completed] = 5
 
         # Stage 5: close fridge door
-        stage5 = self.sequence[5]
         mask5 = active_states == 5
         if torch.any(mask5):
-            params5 = stage5.params
-            door_closed = fridge_door_closed(env, fridge_cfg=params5["fridge_cfg"])
+            params5 = self.sequence[5].params
+            door_closed = fridge_door_closed(
+                env,
+                fridge_prim_path=params5["fridge_prim_path"],
+                door_joint_names=params5.get("door_joint_names", []),
+            )
             newly_completed = mask5 & door_closed & (~self._stage_completion[:, 5])
             reward[newly_completed] += self._stage_rewards[5]
             self._stage_completion[newly_completed, 5] = True

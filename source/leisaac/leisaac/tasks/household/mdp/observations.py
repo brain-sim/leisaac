@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
+import isaacsim.core.utils.stage as stage_utils  # noqa: F401
 import torch
 from isaaclab.assets import Articulation
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
+from isaacsim.core.api import World  # noqa: F401
+from isaacsim.core.prims import SingleArticulation  # noqa: F401
+from termcolor import colored
+
+FRIDGE_DOOR_DEFAULT_PRIM_PATH = (
+    "RevoluteJoint_door2",
+    "RevoluteJoint_door3",
+)
 
 
 def object_grasped(
@@ -104,53 +115,84 @@ def _select_articulation_joints(
     return articulation.data.joint_pos[:, matching_indices]
 
 
+def _resolve_env_prim_path(env: ManagerBasedRLEnv, expr: str, env_index: int) -> str:
+    env_roots = getattr(env.scene, "env_prim_paths", None)
+    env_root = (
+        env_roots[env_index]
+        if env_roots is not None
+        else f"{env.scene.env_ns}/env_{env_index}"
+    )
+    resolved = (
+        expr.replace("{ENV_REGEX_NS}", env_root)
+        .replace("ENV_REGEX_NS", env_root)
+        .replace("Env_regex_scene", env_root)
+        .replace("env_regex_scene", env_root)
+        .replace("{ENV_NS}", env.scene.env_ns)
+        .replace("ENV_NS", env.scene.env_ns)
+        .replace("env_.*", f"env_{env_index}")
+    )
+    if not resolved.startswith("/"):
+        resolved = f"{env_root.rstrip('/')}/{resolved.lstrip('/')}"
+    return resolved
+
+
+def fridge_door_angle(
+    env: ManagerBasedRLEnv,
+    fridge_prim_path: str | None = None,
+    door_joint_names: str | Sequence[str] = FRIDGE_DOOR_DEFAULT_PRIM_PATH,
+) -> torch.Tensor:
+    angles = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
+    # import ipdb; ipdb.set_trace()
+    robot = SingleArticulation(
+        prim_path=fridge_prim_path.replace("{ENV_REGEX_NS}", "/World/envs/env_.*")
+    )
+    if isinstance(door_joint_names, str):
+        door_joint_names = [
+            door_joint_names,
+        ]
+    door_joint_ids = (
+        torch.tensor([robot.get_dof_index(name) for name in door_joint_names])
+        .unsqueeze(0)
+        .repeat(env.num_envs, 1)
+    )
+    door_joint_positions = robot.get_joint_positions(door_joint_ids)
+    door_joint_positions = torch.abs(door_joint_positions)
+    angles = torch.max(door_joint_positions, dim=1).values
+    return angles
+
+
 def fridge_door_opened(
     env: ManagerBasedRLEnv,
-    fridge_cfg: SceneEntityCfg = SceneEntityCfg("fridge"),
-    joint_keywords: tuple[str, ...] = ("door",),
-    angle_threshold: float = 0.35,
-    debug: bool = False,
+    fridge_prim_path: str | None = None,
+    door_joint_names: Sequence[str] | str = FRIDGE_DOOR_DEFAULT_PRIM_PATH,
+    angle_threshold: float = 0.25,
 ) -> torch.Tensor:
     """Detect whether the fridge door articulation exceeds an opening threshold."""
 
-    try:
-        fridge: Articulation = env.scene[fridge_cfg.name]
-    except KeyError:
-        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    door_angles = fridge_door_angle(
+        env,
+        fridge_prim_path=fridge_prim_path,
+        door_joint_names=door_joint_names,
+    )
 
-    if debug:
-        import ipdb
-
-        ipdb.set_trace()
-
-    joint_positions = _select_articulation_joints(fridge, joint_keywords)
-    if joint_positions is None:
-        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
-
-    door_angle = torch.abs(joint_positions).amax(dim=1)
-    return door_angle > angle_threshold
+    return door_angles > angle_threshold
 
 
 def fridge_door_closed(
     env: ManagerBasedRLEnv,
-    fridge_cfg: SceneEntityCfg = SceneEntityCfg("fridge"),
-    joint_keywords: tuple[str, ...] = ("door",),
-    angle_threshold: float = 0.1,
+    fridge_prim_path: str | None = None,
+    door_joint_names: Sequence[str] | str = FRIDGE_DOOR_DEFAULT_PRIM_PATH,
+    angle_threshold: float = 0.05,
 ) -> torch.Tensor:
     """Detect whether the fridge door articulation is below the closing threshold."""
 
-    try:
-        fridge: Articulation = env.scene[fridge_cfg.name]
-    except KeyError:
-        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    door_angles = fridge_door_angle(
+        env,
+        fridge_prim_path=fridge_prim_path,
+        door_joint_names=door_joint_names,
+    )
 
-    joint_positions = _select_articulation_joints(fridge, joint_keywords)
-    if joint_positions is None:
-        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
-
-    door_angle = torch.abs(joint_positions).amax(dim=1)
-    # print(f"Door angles: {door_angle} <=> {angle_threshold}")
-    return door_angle < angle_threshold
+    return door_angles < angle_threshold
 
 
 def object_near_target(
@@ -160,6 +202,7 @@ def object_near_target(
     target_position: tuple[float, float, float] | None = None,
     xy_threshold: float = 0.15,
     z_threshold: float = 0.05,
+    debug: bool = False,
 ) -> torch.Tensor:
     """Check whether the object is positioned close to the given target."""
 
@@ -193,9 +236,39 @@ def object_near_target(
     horizontal_delta = object_pos[:, :2] - target_pos[:, :2]
     horizontal_dist = torch.linalg.vector_norm(horizontal_delta, dim=1)
     vertical_delta = torch.abs(object_pos[:, 2] - target_pos[:, 2])
-
     close_horizontal = horizontal_dist < xy_threshold
     close_vertical = vertical_delta < z_threshold
+    if debug:
+        print(
+            colored(
+                f"Object '{object_cfg.name}' pos: {object_pos.cpu().numpy()}, \n",
+                "magenta",
+                attrs=["bold"],
+            )
+            + colored(
+                f"target pos: {target_pos.cpu().numpy()}, \n", "magenta", attrs=["bold"]
+            )
+            + colored(
+                f"horizontal dist: {horizontal_dist.cpu().numpy()}, \n",
+                "magenta",
+                attrs=["bold"],
+            )
+            + colored(
+                f"vertical dist: {vertical_delta.cpu().numpy()}, \n",
+                "magenta",
+                attrs=["bold"],
+            )
+            + colored(
+                f"close_horizontal: {close_horizontal.cpu().numpy()}, \n",
+                "magenta",
+                attrs=["bold"],
+            )
+            + colored(
+                f"close_vertical: {close_vertical.cpu().numpy()}",
+                "magenta",
+                attrs=["bold"],
+            ),
+        )
     return torch.logical_and(close_horizontal, close_vertical)
 
 
@@ -209,6 +282,7 @@ def object_placed(
     right_ee_frame_cfg: SceneEntityCfg | None = None,
     xy_threshold: float = 0.15,
     z_threshold: float = 0.05,
+    debug: bool = False,
 ) -> torch.Tensor:
     """Determine whether the object has been placed at the target and released."""
 
@@ -219,6 +293,7 @@ def object_placed(
         target_position=target_position,
         xy_threshold=xy_threshold,
         z_threshold=z_threshold,
+        debug=debug,
     )
     if not torch.any(near_target):
         return near_target

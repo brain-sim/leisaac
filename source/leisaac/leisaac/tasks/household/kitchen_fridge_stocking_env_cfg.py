@@ -14,8 +14,10 @@ from isaaclab.utils import configclass
 
 from leisaac.utils.domain_randomization import (
     domain_randomization,
-    randomize_camera_uniform,
-    randomize_object_uniform,
+    randomize_camera_uniform,  # noqa: F401
+    randomize_object_asset_uniform,  # noqa: F401
+    randomize_object_uniform,  # noqa: F401
+    randomize_objects_permutation,  # noqa: F401
 )
 
 from ..template import (
@@ -138,7 +140,11 @@ FRIDGE_STOCKING_SEQUENCE = mdp.resolve_subtask_sequence(
             "description": "Open the fridge door.",
             "reward": 2.5,
             "params": {
-                "fridge_cfg": FRIDGE_CFG,
+                "fridge_prim_path": "{ENV_REGEX_NS}/Scene/Fridge",
+                "door_joint_names": [
+                    "RevoluteJoint_door2",
+                    "RevoluteJoint_door3",
+                ],
             },
             "mimic_kwargs": {
                 "object_ref": "fridge",
@@ -152,11 +158,12 @@ FRIDGE_STOCKING_SEQUENCE = mdp.resolve_subtask_sequence(
             "reward": 3.5,
             "params": {
                 "object_cfg": FRUIT_CFG,
-                "target_position": STORAGE_PLATE_TARGET_POSITION,
+                "target_position": FRIDGE_REL_POS,
                 "robot_cfg": ROBOT_CFG,
-                "ee_frame_cfg": RIGHT_EE_CFG,
-                "xy_threshold": 0.18,
-                "z_threshold": 0.06,
+                "left_ee_frame_cfg": LEFT_EE_CFG,
+                "right_ee_frame_cfg": RIGHT_EE_CFG,
+                "xy_threshold": 0.3,
+                "z_threshold": 0.25,
             },
             "mimic_kwargs": {
                 "object_ref": "fruit_bundle",
@@ -169,7 +176,11 @@ FRIDGE_STOCKING_SEQUENCE = mdp.resolve_subtask_sequence(
             "description": "Close the fridge door to finish stocking.",
             "reward": 2.5,
             "params": {
-                "fridge_cfg": FRIDGE_CFG,
+                "fridge_prim_path": "{ENV_REGEX_NS}/Scene/Fridge",
+                "door_joint_names": [
+                    "RevoluteJoint_door2",
+                    "RevoluteJoint_door3",
+                ],
             },
             "mimic_kwargs": {
                 "object_ref": "fridge",
@@ -213,34 +224,26 @@ class FridgeStockingRewardsCfg:
     )
     action_reg = RewTerm(func=mdp.action_l2, weight=-1.0e-4)
 
-    def __post_init__(self) -> None:
-        self.disable_debug_logging()
-
-    @property
-    def debug_enabled(self) -> bool:
-        return bool(getattr(self.sequential_progress.func, "debug", False))
-
-    def enable_debug_logging(self) -> None:
-        self.sequential_progress.func.debug = True
-
-    def disable_debug_logging(self) -> None:
-        self.sequential_progress.func.debug = False
-
 
 @configclass
 class FridgeStockingTerminationsCfg(XLeRobotTerminationsCfg):
-    success = DoneTerm(
+    task_success = DoneTerm(
         func=mdp.fridge_stocking_completed,
         params={
-            "object_cfg": FRUIT_CFG,
-            "fridge_cfg": FRIDGE_CFG,
             "robot_cfg": ROBOT_CFG,
             "left_ee_frame_cfg": LEFT_EE_CFG,
             "right_ee_frame_cfg": RIGHT_EE_CFG,
-            "target_position": STORAGE_PLATE_TARGET_POSITION,
-            "close_threshold": 0.1,
-            "xy_threshold": 0.18,
-            "z_threshold": 0.06,
+            "object_cfg": FRUIT_CFG,
+            "fridge_cfg": FRIDGE_CFG,
+            "fridge_prim_path": "{ENV_REGEX_NS}/Scene/Fridge",
+            "door_joint_names": [
+                "RevoluteJoint_door2",
+                "RevoluteJoint_door3",
+            ],
+            "target_position": FRIDGE_REL_POS,
+            "close_threshold": 0.05,
+            "xy_threshold": 0.3,
+            "z_threshold": 0.25,
         },
     )
 
@@ -254,7 +257,6 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-
         self.viewer.eye = (3.2, -2.4, 1.6)
         self.viewer.lookat = (4.4, -2.4, 1.0)
         self.scene.robot.init_state.pos = (4.3, -1.8, 0.0)
@@ -296,7 +298,6 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
             joint_names=["head_pan_joint"],
             scale=0.4,
         )
-
         domain_randomization(
             self,
             random_options=[
@@ -323,16 +324,6 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
                 ),
             ],
         )
-
-    def enable_debug_logging(self) -> None:
-        """Enable reward debug mode for teleoperation."""
-
-        self.rewards.enable_debug_logging()
-
-    def disable_debug_logging(self) -> None:
-        """Disable reward debug mode."""
-
-        self.rewards.disable_debug_logging()
 
 
 @configclass
