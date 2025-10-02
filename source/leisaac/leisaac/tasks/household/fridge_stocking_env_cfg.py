@@ -5,7 +5,8 @@ from isaaclab.assets import AssetBaseCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
-from leisaac.assets.scenes.empty import EMPTY_CFG
+from leisaac.assets.scenes.empty import EMPTY_CFG, EMPTY_USD_PATH
+from leisaac.utils.general_assets import parse_usd_and_create_subassets
 from leisaac.utils.domain_randomization import (
     randomize_object_uniform,
     randomize_camera_uniform,
@@ -77,6 +78,8 @@ class FridgeStockingEnvCfg(XLeRobotTaskEnvCfg):
             joint_names=["head_pan_joint"],
             scale=0.4,
         )
+
+        parse_usd_and_create_subassets(EMPTY_USD_PATH, self)
 
         domain_randomization(
             self,
